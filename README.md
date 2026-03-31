@@ -9,6 +9,7 @@ src/
     core/
     modelling/
     scoring/
+    utils/
   config/
 ```
 
@@ -26,3 +27,8 @@ conda activate credit_scoring
 pip install poetry  
 poetry init  
 poetry add jupyter  
+
+### В переменнызх окружения нужно задать значения для
+
+DB_USER  
+DB_PASSWORD  

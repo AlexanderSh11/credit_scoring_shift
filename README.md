@@ -24,7 +24,7 @@ conda activate credit_scoring
 
 ### Установка зависимостей
 
-pip install poetry  
+pipx install poetry  
 poetry init  
 poetry add jupyter  
 

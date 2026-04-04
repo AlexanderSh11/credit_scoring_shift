@@ -47,7 +47,7 @@ class CSVAnalyser:
             print(f"- Тип данных: {df[col].dtype}")
             print(f"- Уникальных значений: {df[col].nunique()}")
             print(
-                f"- Null значений: {df[col].isnull().sum()} ({df[col].isnull().sum() / len(df) * 100:.2f}%)"
+                f"- Null значений: {df[col].isnull().sum()} ({df[col].isnull().sum() / len(df):.2%})"
             )
 
             if df[col].dtype == "object":

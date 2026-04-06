@@ -128,16 +128,16 @@ def generate_application_features(df):
 def main():
     """Загрузка данных и генерация признаков для application"""
 
-    train_path = "C:\\csv_files\\application_train.csv"
+    data_path = "C:\\csv_files\\application_train.csv"
 
-    train_df = pd.read_csv(train_path)
+    df = pd.read_csv(data_path)
 
-    train_features = generate_application_features(train_df)
-    train_features.to_csv(
+    application_features = generate_application_features(df)
+    application_features.to_csv(
         "src\\app\\modelling\\features\\application_features.csv", index=False
     )
 
-    print(train_features.head(20))
+    print(application_features.head(20))
 
 
 if __name__ == "__main__":

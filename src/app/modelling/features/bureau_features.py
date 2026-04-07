@@ -1,4 +1,15 @@
-import pandas as pd
+import os
+import sys
+
+# Получаем абсолютный путь к текущему файлу
+current_file = os.path.abspath(__file__)
+# Переходим в credit_scoring
+project_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
+)
+sys.path.insert(0, project_root)
+
+from src.app.utils.db_manager import DatabaseManager  # noqa: E402
 
 
 def generate_bureau_features(df):
@@ -7,16 +18,16 @@ def generate_bureau_features(df):
     """
 
     # Копируем индекс
-    features = df[["SK_ID_CURR"]].copy()
+    features = df[["sk_id_curr"]].copy()
 
     # 1. Максимальная сумма просрочки
-    features["MAX_OVERDUE"] = df.groupby("SK_ID_CURR")["AMT_CREDIT_SUM_OVERDUE"].max()
+    features["max_overdue"] = df.groupby("sk_id_curr")["amt_credit_sum_overdue"].max()
     # 2. Минимальная сумма просрочки
-    features["MAX_OVERDUE"] = df.groupby("SK_ID_CURR")["AMT_CREDIT_SUM_OVERDUE"].min()
+    features["min_overdue"] = df.groupby("sk_id_curr")["amt_credit_sum_overdue"].min()
     # 3. Какую долю суммы от открытого займа просрочил
-    total_credit = df.groupby("SK_ID_CURR")["AMT_CREDIT_SUM"].sum()
-    total_overdue = df.groupby("SK_ID_CURR")["AMT_CREDIT_SUM_OVERDUE"].sum()
-    features["OVERDUE_PROPORTION"] = total_overdue / total_credit
+    total_credit = df.groupby("sk_id_curr")["amt_credit_sum"].sum()
+    total_overdue = df.groupby("sk_id_curr")["amt_credit_sum_overdue"].sum()
+    features["overdue_proportion"] = total_overdue / total_credit
     # 4. Кол-во кредитов определенного типа
 
     # 5. Кол-во просрочек кредитов определенного типа
@@ -29,14 +40,17 @@ def generate_bureau_features(df):
 def main():
     """Загрузка данных и генерация признаков для bureau"""
 
-    data_path = "C:\\csv_files\\bureau.csv"
-
-    df = pd.read_csv(data_path)
+    db_manager = DatabaseManager()
+    table_name = "bureau"
+    query = f"""
+    SELECT * FROM {table_name}
+    """
+    df = db_manager.get_df_from_query(query)
 
     bureau_features = generate_bureau_features(df)
-    bureau_features.to_csv(
-        "src\\app\\modelling\\features\\bureau_features.csv", index=False
-    )
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    output_path = os.path.join(current_dir, "bureau_features.csv")
+    bureau_features.to_csv(output_path, index=False)
 
     print(bureau_features.head(20))
 

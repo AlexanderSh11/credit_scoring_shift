@@ -1,4 +1,15 @@
-import pandas as pd
+import os
+import sys
+
+# Получаем абсолютный путь к текущему файлу
+current_file = os.path.abspath(__file__)
+# Переходим в credit_scoring
+project_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
+)
+sys.path.insert(0, project_root)
+
+from src.app.utils.db_manager import DatabaseManager  # noqa: E402
 
 
 def generate_bureau_balance_features(balance_df, bureau_df):
@@ -6,11 +17,11 @@ def generate_bureau_balance_features(balance_df, bureau_df):
     Генерация признаков из bureau_balance таблицы
     """
 
-    # Копируем индекс
+    # Соединяем bureau_balance с bureau для получения sk_id_curr
     merged_df = balance_df.merge(
-        bureau_df[["SK_ID_BUREAU", "SK_ID_CURR"]], on="SK_ID_BUREAU", how="inner"
+        bureau_df[["sk_id_bureau", "sk_id_curr"]], on="sk_id_bureau", how="inner"
     )
-    features = merged_df[["SK_ID_CURR"]].copy()
+    features = merged_df[["sk_id_curr", "sk_id_bureau"]].copy()
 
     # 1. Кол-во открытых кредитов
     # 2. Кол-во закрытых кредитов
@@ -27,17 +38,24 @@ def generate_bureau_balance_features(balance_df, bureau_df):
 def main():
     """Загрузка данных и генерация признаков для bureau_balance"""
 
-    bureau_path = "C:\\csv_files\\bureau.csv"
-    balance_path = "C:\\csv_files\\bureau_balance.csv"
+    db_manager = DatabaseManager()
 
-    bureau_df = pd.read_csv(bureau_path)
-    balance_df = pd.read_csv(balance_path)
+    bureau_table_name = "bureau"
+    query = f"""
+    SELECT * FROM {bureau_table_name}
+    """
+    bureau_df = db_manager.get_df_from_query(query)
+    balance_table_name = "bureau_balance"
+    query = f"""
+    SELECT * FROM {balance_table_name}
+    """
+    balance_df = db_manager.get_df_from_query(query)
 
-    bureau_balance_features = generate_bureau_balance_features(balance_df, bureau_df)
-
-    bureau_balance_features.to_csv(
-        "src\\app\\modelling\\features\\bureau_balance_features.csv", index=False
-    )
+    bureau_balance_features = generate_bureau_balance_features(balance_df=balance_df, bureau_df=bureau_df)
+    
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    output_path = os.path.join(current_dir, "bureau_balance_features.csv")
+    bureau_balance_features.to_csv(output_path, index=False)
 
     print(bureau_balance_features.head(20))
 

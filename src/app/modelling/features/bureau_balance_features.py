@@ -53,7 +53,7 @@ def main():
 
     bureau_balance_features = generate_bureau_balance_features(balance_df=balance_df, bureau_df=bureau_df)
     
-    current_dir = os.path.dirname(os.path.abspath(__file__))
+    current_dir = os.path.dirname(current_file)
     output_path = os.path.join(current_dir, "bureau_balance_features.csv")
     bureau_balance_features.to_csv(output_path, index=False)
 

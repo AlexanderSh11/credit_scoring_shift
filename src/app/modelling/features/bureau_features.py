@@ -48,7 +48,7 @@ def main():
     df = db_manager.get_df_from_query(query)
 
     bureau_features = generate_bureau_features(df)
-    current_dir = os.path.dirname(os.path.abspath(__file__))
+    current_dir = os.path.dirname(current_file)
     output_path = os.path.join(current_dir, "bureau_features.csv")
     bureau_features.to_csv(output_path, index=False)
 

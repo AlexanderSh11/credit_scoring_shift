@@ -147,7 +147,7 @@ def main():
     df = db_manager.get_df_from_query(query)
 
     application_features = generate_application_features(df)
-    current_dir = os.path.dirname(os.path.abspath(__file__))
+    current_dir = os.path.dirname(current_file)
     output_path = os.path.join(current_dir, "application_features.csv")
     application_features.to_csv(output_path, index=False)
 

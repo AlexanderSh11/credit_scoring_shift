@@ -3,6 +3,8 @@ import sys
 import numpy as np
 from datetime import datetime
 
+import pandas as pd
+
 # Получаем абсолютный путь к текущему файлу
 current_file = os.path.abspath(__file__)
 # Переходим в credit_scoring
@@ -48,6 +50,44 @@ def get_house_columns(df):
             house_cols.append(col)
 
     return house_cols
+
+
+def find_interest_rate(PV, P, n):
+    """
+    :param PV: сумма кредита
+    :param P: ежемесячный платеж
+    :param n: срок в месяцах
+    """
+    if pd.isna(PV) or pd.isna(P) or pd.isna(n):
+        return np.nan
+    if PV <= 0 or P <= 0 or n <= 0:
+        return np.nan
+
+    # Платежи за срок n должны покрыть кредит
+    if P * n <= PV:
+        return np.nan
+
+    # Метод бисекции
+    low, high = 0.0001, 0.1
+
+    for _ in range(50):
+        # на каждом шаге делит интервал пополам и выбирает ту половину, где рассчитанный платеж отличается от заданного в нужную сторону
+        r = (low + high) / 2
+        try:
+            calculated_P = PV * r / (1 - (1 + r) ** (-n))
+        except Exception:
+            return np.nan
+
+        if calculated_P > P:
+            high = r
+        else:
+            low = r
+
+    monthly_rate = (low + high) / 2
+    annual_rate = (1 + monthly_rate) ** 12 - 1
+    result = annual_rate * 100
+
+    return result
 
 
 def generate_application_features(df):
@@ -134,6 +174,21 @@ def generate_application_features(df):
     features["income_diff_from_group_avg"] = df["amt_income_total"] - group_avg_income
 
     # 13. Посчитать процентную ставку (*) (можно использовать все таблицы, например previous_application)
+    # Из таблицы previous_application найдем все уникальные сроки прошлых кредитов клиентов
+    possible_months = sorted(df["cnt_payment"].dropna().unique())
+
+    def calc_rate(row):
+        PV = row["amt_credit"]
+        P = row["amt_annuity"]
+
+        for n in possible_months:
+            # Поиск ставки
+            rate = find_interest_rate(PV, P, n)
+            if not pd.isna(rate) and 0 < rate <= 100:
+                return rate
+        return np.nan
+
+    features["interest_rate"] = df.apply(calc_rate, axis=1)
 
     return features
 
@@ -142,9 +197,19 @@ def main():
     """Загрузка данных и генерация признаков для application"""
 
     db_manager = DatabaseManager()
-    table_name = "application"
+    application_table_name = "application"
+    previous_table_name = "previous_application"
     query = f"""
-    SELECT * FROM {table_name}
+    SELECT 
+        a.*,
+        p.CNT_PAYMENT
+    FROM {application_table_name} a
+    LEFT JOIN (
+        SELECT DISTINCT ON (SK_ID_CURR) SK_ID_CURR, CNT_PAYMENT
+        FROM {previous_table_name}
+        WHERE CNT_PAYMENT IS NOT NULL AND CNT_PAYMENT > 0
+        ORDER BY SK_ID_CURR DESC
+    ) p ON a.SK_ID_CURR = p.SK_ID_CURR
     """
     df = db_manager.get_df_from_query(query)
 

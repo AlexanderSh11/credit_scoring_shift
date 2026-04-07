@@ -1,6 +1,8 @@
 import os
 import sys
 
+import numpy as np
+
 # Получаем абсолютный путь к текущему файлу
 current_file = os.path.abspath(__file__)
 # Переходим в credit_scoring
@@ -18,22 +20,56 @@ def generate_bureau_features(df):
     """
 
     # Копируем индекс
-    features = df[["sk_id_curr"]].copy()
+    features = df[["sk_id_curr"]].copy().drop_duplicates().reset_index(drop=True)
 
-    # 1. Максимальная сумма просрочки
-    features["max_overdue"] = df.groupby("sk_id_curr")["amt_credit_sum_overdue"].max()
-    # 2. Минимальная сумма просрочки
-    features["min_overdue"] = df.groupby("sk_id_curr")["amt_credit_sum_overdue"].min()
+    # 1. Максимальная сумма просрочки (если просрочек нет, то NaN)
+    overdue_df = df[df["amt_credit_sum_overdue"] > 0]
+    max_overdue = overdue_df.groupby("sk_id_curr")["amt_credit_sum_overdue"].max()
+    features["max_overdue"] = features["sk_id_curr"].map(max_overdue)
+
+    # 2. Минимальная сумма просрочки (если просрочек нет, то NaN, зачем считать непросроченный кредит минимальной просрочкой?)
+    min_overdue = overdue_df.groupby("sk_id_curr")["amt_credit_sum_overdue"].min()
+    features["min_overdue"] = features["sk_id_curr"].map(min_overdue)
+
     # 3. Какую долю суммы от открытого займа просрочил
-    total_credit = df.groupby("sk_id_curr")["amt_credit_sum"].sum()
-    total_overdue = df.groupby("sk_id_curr")["amt_credit_sum_overdue"].sum()
-    features["overdue_proportion"] = total_overdue / total_credit
+    open_df = df[df["credit_active"] == "Active"]
+    total_credit = open_df.groupby("sk_id_curr")["amt_credit_sum"].sum()
+    total_overdue = open_df.groupby("sk_id_curr")["amt_credit_sum_overdue"].sum()
+    features["overdue_proportion"] = features["sk_id_curr"].map(
+        total_overdue
+    ) / features["sk_id_curr"].map(total_credit)
+    features["overdue_proportion"] = features["overdue_proportion"].replace(
+        [np.inf, -np.inf], np.nan
+    )
+
     # 4. Кол-во кредитов определенного типа
+    # Группируем данные по клиенту (sk_id_curr) и типу кредита (credit_type)
+    # fill_value=0 заполняет нулями отсутствующие комбинации
+    credit_type_counts = (
+        df.groupby(["sk_id_curr", "credit_type"]).size().unstack(fill_value=0)
+    )
+    # Переименовываем колонки
+    credit_type_counts.columns = [
+        f"credit_type_{col}" for col in credit_type_counts.columns
+    ]
+    # Объединяем с features, how="left" сохраняет всех клиентов, даже если у них нет кредитов в bureau
+    features = features.merge(credit_type_counts, on="sk_id_curr", how="left")
 
     # 5. Кол-во просрочек кредитов определенного типа
+    overdue_df = df[df["amt_credit_sum_overdue"] > 0]
+    overdue_counts = (
+        overdue_df.groupby(["sk_id_curr", "credit_type"]).size().unstack(fill_value=0)
+    )
+    overdue_counts.columns = [f"overdue_type_{col}" for col in overdue_counts.columns]
+    features = features.merge(overdue_counts, on="sk_id_curr", how="left")
 
     # 6. Кол-во закрытых кредитов определенного типа
-    
+    closed_df = df[df["credit_active"] == "Closed"]
+    closed_counts = (
+        closed_df.groupby(["sk_id_curr", "credit_type"]).size().unstack(fill_value=0)
+    )
+    closed_counts.columns = [f"closed_type_{col}" for col in closed_counts.columns]
+    features = features.merge(closed_counts, on="sk_id_curr", how="left")
     return features
 
 

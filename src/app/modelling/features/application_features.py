@@ -99,7 +99,9 @@ def generate_application_features(df):
     features["id_change_delay"] = np.any(delay_conditions, axis=0).astype(int)
 
     # 7. Доля денег которые клиент отдает на займ за год
-    features["annual_loan_share"] = df["amt_annuity"] / df["amt_income_total"]
+    features["annuity_to_income_proportion"] = (
+        df["amt_annuity"] / df["amt_income_total"]
+    )
 
     # 8. Среднее кол-во детей в семье на одного взрослого
     # CNT_CHILDREN - количество детей, CNT_FAM_MEMBERS - размер семьи

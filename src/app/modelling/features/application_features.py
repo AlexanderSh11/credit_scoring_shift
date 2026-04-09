@@ -74,6 +74,10 @@ def find_interest_rate(PV, P, n):
         # на каждом шаге делит интервал пополам и выбирает ту половину, где рассчитанный платеж отличается от заданного в нужную сторону
         r = (low + high) / 2
         try:
+            # IRR - это ставка r, при которой чистая приведенная стоимость (NPV) = 0
+            # NPV = PV - P/(1+r) - P/(1+r)^2 - ... - P/(1+r)^n = 0
+            # или PV = P * (1 - (1+r)^(-n)) / r
+            # P = PV * r / (1 - (1+r)^(-n))
             calculated_P = PV * r / (1 - (1 + r) ** (-n))
         except Exception:
             return np.nan
@@ -158,6 +162,20 @@ def generate_application_features(df):
     features["income_per_adult"] = df["amt_income_total"] / n_adults
 
     # 11. Взвешенный скор внешних источников. Подумайте какие веса им задать и поясните свой выбор.
+    # Произвольный выбор весов (например, равных) не имеет обоснования. В тренировочных данных есть целевая переменная TARGET
+    # Логично предположить, что источник, имеющий более сильную связь с просрочкой, должен иметь больший вес
+    # Веса рассчитаны на основе корреляции с целевой переменной TARGET в тренировочных данных
+    # Чем выше модуль корреляции, тем больше вес
+    ext_sources = ["ext_source_1", "ext_source_2", "ext_source_3"]
+    # Получаем train по наличию target
+    train_df = df[df["target"].notna()]
+    # Считаем веса только на train
+    correlations = train_df[
+        ["ext_source_1", "ext_source_2", "ext_source_3", "target"]
+    ].corr()
+    weights = abs(correlations["target"].drop("target"))
+    weights = weights / weights.sum()
+    features["weighted_ext_score"] = (df[ext_sources] * weights).sum(axis=1)
 
     # 12. Поделим людей на группы в зависимости от пола и образования. В каждой группе посчитаем средний доход. Сделаем признак разница между средним доходом в группе и доходом заявителя
     # Группируем по полу (CODE_GENDER) и образованию (NAME_EDUCATION_TYPE)

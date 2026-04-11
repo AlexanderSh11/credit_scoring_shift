@@ -3,3 +3,5 @@ notebooks/HomeWork.csv
 __pycache__/
 
 .vscode/
+
+src/app/modelling/features/*.csv

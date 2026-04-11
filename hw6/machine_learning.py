@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.feature_selection import mutual_info_classif
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 
 PROJECT_DIR = Path(__file__).parent.parent
@@ -224,35 +225,102 @@ def encode_categorical_features(X, y, min_frequency=100):
     return X_enc, y_enc
 
 
-def select_features_by_importance(X, y, top_n=50):
+class FeatureSelector:
     """
-    Отбор топ-N признаков по важности с помощью Random Forest
+    Класс для отбора признаков разными методами
     """
-    rf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
-    rf.fit(X, y)
-    rf_importance = pd.Series(rf.feature_importances_, index=X.columns).sort_values(
-        ascending=False
-    )
 
-    # Выбираем топ-N по RF важности
-    selected_features = rf_importance.head(top_n).index.tolist()
-    X_selected = X[selected_features]
+    def __init__(self, random_state=42):
+        self.random_state = random_state
+        self.selected_features = None
+        self.importance_df = None
 
-    print(f"Отобрано {len(selected_features)} признаков")
+    def select_by_mi(self, X, y, top_n=50):
+        """Отбор по Mutual Information"""
 
-    for i, feature in enumerate(selected_features[:10], 1):
-        rf_val = rf_importance[feature]
-        print(f"  {i:2d}. {feature:<35} RF={rf_val:.4f}")
+        mi_scores = mutual_info_classif(X, y, random_state=self.random_state)
+        mi_series = pd.Series(mi_scores, index=X.columns).sort_values(ascending=False)
 
-    # Сохраняем важность всех признаков
-    importance_df = pd.DataFrame(
-        {
-            "feature": X.columns,
-            "rf_importance": rf_importance.values,
-        }
-    ).sort_values("rf_importance", ascending=False)
+        self.selected_features = mi_series.head(top_n).index.tolist()
 
-    return X_selected, selected_features, importance_df
+        self.importance_df = pd.DataFrame(
+            {
+                "feature": X.columns,
+                "importance": mi_scores,
+            }
+        ).sort_values("importance", ascending=False)
+
+        print(f"Отобрано {len(self.selected_features)} признаков по Mutual Information")
+        return X[self.selected_features]
+
+    def select_by_rf(self, X, y, top_n=50, n_estimators=100):
+        """Отбор по Random Forest Importance"""
+
+        rf = RandomForestClassifier(
+            n_estimators=n_estimators, random_state=self.random_state, n_jobs=-1
+        )
+        rf.fit(X, y)
+        rf_importance = pd.Series(rf.feature_importances_, index=X.columns).sort_values(
+            ascending=False
+        )
+
+        self.selected_features = rf_importance.head(top_n).index.tolist()
+
+        self.importance_df = pd.DataFrame(
+            {
+                "feature": X.columns,
+                "importance": rf.feature_importances_,
+            }
+        ).sort_values("importance", ascending=False)
+
+        print(f"Отобрано {len(self.selected_features)} признаков по Random Forest")
+        return X[self.selected_features]
+
+    def select_by_weighted(self, X, y, top_n=50, weight_mi=0.3, weight_rf=0.7):
+        """Отбор по взвешенной важности MI + RF"""
+
+        if abs(weight_mi + weight_rf - 1.0) > 0.01:
+            raise ValueError(
+                f"Сумма весов должна быть 1.0, сейчас {weight_mi + weight_rf}"
+            )
+
+        mi_scores = mutual_info_classif(X, y, random_state=self.random_state)
+
+        rf = RandomForestClassifier(
+            n_estimators=100, random_state=self.random_state, n_jobs=-1
+        )
+        rf.fit(X, y)
+        rf_importance = rf.feature_importances
+
+        mi_norm = (mi_scores - mi_scores.min()) / (mi_scores.max() - mi_scores.min())
+        rf_norm = (rf_importance - rf_importance.min()) / (
+            rf_importance.max() - rf_importance.min()
+        )
+
+        weighted_scores = weight_mi * mi_norm + weight_rf * rf_norm
+        weighted_series = pd.Series(weighted_scores, index=X.columns).sort_values(
+            ascending=False
+        )
+
+        self.selected_features = weighted_series.head(top_n).index.tolist()
+
+        self.importance_df = pd.DataFrame(
+            {
+                "feature": X.columns,
+                "importance": weighted_scores,
+            }
+        ).sort_values("importance", ascending=False)
+
+        print(
+            f"Отобрано {len(self.selected_features)} признаков по взвешенной важности"
+        )
+        return X[self.selected_features]
+
+    def get_selected_features(self):
+        return self.selected_features
+
+    def get_importance_df(self):
+        return self.importance_df
 
 
 def features_selection(df, top_n=50, test_size=0.2):
@@ -275,16 +343,22 @@ def features_selection(df, top_n=50, test_size=0.2):
         X_encoded, y_encoded, test_size=test_size, random_state=42, stratify=y_encoded
     )
 
-    X_train_selected, selected_features, importance_df = select_features_by_importance(
-        X_train, y_train, top_n
-    )
-    X_test_selected = X_test[selected_features]
+    selector = FeatureSelector()
+    X_train_selected = selector.select_by_rf(X_train, y_train, top_n=top_n)
+    X_test_selected = X_test[selector.get_selected_features()]
+
     print(
         f"Датафрейм с выбранными признаками: Train={X_train_selected.shape}, Test={X_test_selected.shape}"
     )
-    print(importance_df)
+    print(selector.get_importance_df())
 
-    return X_train_selected, X_test_selected, y_train, y_test, selected_features
+    return (
+        X_train_selected,
+        X_test_selected,
+        y_train,
+        y_test,
+        selector.get_selected_features(),
+    )
 
 
 def main():
@@ -310,7 +384,7 @@ def main():
     print(df.head())
 
     X_train, X_test, y_train, y_test, selected_features = features_selection(
-        df, top_n=50
+        df, top_n=50, test_size=0.2
     )
 
 

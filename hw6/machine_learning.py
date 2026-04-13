@@ -305,7 +305,9 @@ def feature_engineering(df):
     df_new_features["has_open_credits"] = (
         df_new_features["open_credits_count"] > 0
     ).astype(int)
-    print("Были созданы новые признаки (had_overdue, overdue_proportion, has_open_credits)")
+    print(
+        "Были созданы новые признаки (had_overdue, overdue_proportion, has_open_credits)"
+    )
     return df_new_features
 
 

@@ -1,9 +1,11 @@
 import sys
 from pathlib import Path
+import pickle
+import time
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, roc_auc_score
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
 from sklearn.tree import DecisionTreeClassifier
@@ -350,10 +352,19 @@ class ModelTrainer:
     Класс для обучения моделей
     """
 
-    def __init__(self, random_state=42):
+    def __init__(self, random_state=42, models_dir="models"):
         self.random_state = random_state
+        self.best_params = {}
         self.results = {}
         self.models = {}
+        self.models_dir = Path(models_dir)
+
+    def save_model(self, model, model_name):
+        """Сохранение модели в pickle файл"""
+        filename = self.models_dir / f"{model_name.lower().replace(' ', '_')}.pkl"
+        with open(filename, "wb") as f:
+            pickle.dump(model, f)
+        print(f"Модель сохранена: {filename}")
 
     def get_selected_data(self, X_train, X_test, selector, top_n):
         """Отбор признаков"""
@@ -387,6 +398,7 @@ class ModelTrainer:
         top_n,
         need_scale,
         model_name,
+        param_grid=None,
     ):
         """Обучение модели"""
         print(model_name)
@@ -399,7 +411,23 @@ class ModelTrainer:
         if need_scale:
             X_train_sel, X_test_sel = self.scale(X_train_sel, X_test_sel)
 
-        model.fit(X_train_sel, y_train)
+        start_time = time.time()
+
+        if param_grid:
+            print(f"Подбор гиперпараметров для {model_name}")
+            grid_search = GridSearchCV(
+                model, param_grid, cv=5, scoring="roc_auc", n_jobs=-1, verbose=1
+            )
+            grid_search.fit(X_train_sel, y_train)
+            model = grid_search.best_estimator_
+            self.best_params[model_name] = grid_search.best_params_
+            print(f"Лучшие параметры: {grid_search.best_params_}")
+        else:
+            model.fit(X_train_sel, y_train)
+
+        end_time = time.time()
+        elapsed = end_time - start_time
+        print(f"Время обучения: {elapsed:.2f} секунд")
 
         y_pred = model.predict(X_test_sel)
         y_pred_proba = model.predict_proba(X_test_sel)[:, 1]
@@ -408,6 +436,8 @@ class ModelTrainer:
 
         self.models[model_name] = model
         self.results[model_name] = auc
+
+        self.save_model(model, model_name)
 
         return model, auc
 
@@ -418,6 +448,13 @@ class ModelTrainer:
         model = LogisticRegression(
             random_state=self.random_state, max_iter=1000, class_weight="balanced"
         )
+
+        param_grid = {
+            "C": [0.01, 0.1, 1],
+            "penalty": ["l1", "l2"],
+            "solver": ["liblinear"],
+        }
+
         return self.train_model(
             model,
             X_train,
@@ -428,6 +465,7 @@ class ModelTrainer:
             top_n,
             need_scale=True,
             model_name="Logistic Regression",
+            param_grid=param_grid,
         )
 
     def train_decision_tree(self, X_train, X_test, y_train, y_test, selector, top_n=20):
@@ -435,6 +473,13 @@ class ModelTrainer:
         model = DecisionTreeClassifier(
             random_state=self.random_state, class_weight="balanced"
         )
+
+        param_grid = {
+            "max_depth": [3, 5, 7, 10, None],
+            "min_samples_split": [2, 5, 10, 20],
+            "min_samples_leaf": [1, 2, 4],
+        }
+
         return self.train_model(
             model,
             X_train,
@@ -445,6 +490,7 @@ class ModelTrainer:
             top_n,
             need_scale=False,
             model_name="Decision Tree",
+            param_grid=param_grid,
         )
 
     def train_random_forest(self, X_train, X_test, y_train, y_test, selector, top_n=20):
@@ -452,6 +498,13 @@ class ModelTrainer:
         model = RandomForestClassifier(
             n_estimators=100, random_state=self.random_state, class_weight="balanced"
         )
+
+        param_grid = {
+            "n_estimators": [100, 200, 300],
+            "max_depth": [5, 10],
+            "min_samples_split": [2, 5, 10],
+        }
+
         return self.train_model(
             model,
             X_train,
@@ -462,6 +515,7 @@ class ModelTrainer:
             top_n,
             need_scale=False,
             model_name="Random Forest",
+            param_grid=param_grid,
         )
 
     def train_gradient_boosting(
@@ -474,6 +528,13 @@ class ModelTrainer:
             learning_rate=0.1,
             max_depth=3,
         )
+
+        param_grid = {
+            "n_estimators": [200],
+            "learning_rate": [0.05, 0.1],
+            "max_depth": [3, 7],
+        }
+
         return self.train_model(
             model,
             X_train,
@@ -484,6 +545,7 @@ class ModelTrainer:
             top_n,
             need_scale=False,
             model_name="Gradient Boosting",
+            param_grid=param_grid,
         )
 
     def train_all(self, X_train, X_test, y_train, y_test, selector, top_n=20):
@@ -518,6 +580,8 @@ def main():
 
     MIN_FREQUENCY_IN_CAT_FEATURE = 5
 
+    MODELS_DIR = PROJECT_DIR / "hw6" / "models"
+
     # Объединяем по SK_ID_CURR в один датафрейм
     df = application_df.merge(features_df, on="sk_id_curr", how="left")
     # Удаляем test данные
@@ -534,7 +598,7 @@ def main():
     )
 
     # Обучение всех моделей
-    trainer = ModelTrainer(random_state=42)
+    trainer = ModelTrainer(random_state=42, models_dir=MODELS_DIR)
     trainer.train_all(X_train, X_test, y_train, y_test, selector, top_n=20)
 
 

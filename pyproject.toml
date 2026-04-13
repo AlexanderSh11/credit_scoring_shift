@@ -12,7 +12,8 @@ dependencies = [
     "psycopg2 (>=2.9.11,<3.0.0)",
     "pandas (<3.0.0)",
     "tqdm (>=4.67.3,<5.0.0)",
-    "scikit-learn (==1.6.1)"
+    "scikit-learn (==1.6.1)",
+    "matplotlib (==3.7.5)"
 ]
 
 

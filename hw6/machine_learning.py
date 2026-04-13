@@ -135,7 +135,7 @@ def fill_nan_values(df):
 
 
 def filter_features(df):
-    id_cols = ["sk_id_curr"]
+    id_cols = ["sk_id_curr", "id_change_delay"]
     cols_to_remove = [col for col in id_cols if col in df.columns]
     df_filtered = drop_columns(df=df, cols=cols_to_remove, label="ID")
 
@@ -149,13 +149,6 @@ def filter_features(df):
         )
 
     isnull_mean = df_filtered.isnull().mean()
-
-    # Удаляем признаки с >70% пропусков
-    cols_to_remove = isnull_mean[isnull_mean > 0.7].index.tolist()
-    if cols_to_remove:
-        df_filtered = drop_columns(
-            df=df_filtered, cols=cols_to_remove, label="Признаки с >70% пропусков"
-        )
 
     # Удаляем строки с пропусками в признаках где <1% пропусков
     cols_with_few_nulls = isnull_mean[
@@ -293,11 +286,30 @@ def scale_features(df, cols):
     df_scaled = df.copy()
     scaler = StandardScaler()
     df_scaled[cols] = scaler.fit_transform(df[cols])
-
+    print("Признаки были масштабированы с помощью StandardScaler")
     return df_scaled, scaler
 
 
-def prepare_data(df, test_size=0.2, top_n=50):
+def feature_engineering(df):
+    """Создание новых признаков, которые могут быть полезны"""
+    df_new_features = df.copy()
+    # Были ли просрочки по кредитам у клиента
+    df_new_features["had_overdue"] = (df_new_features["overdue_count_1"] > 0).astype(
+        int
+    )
+    # Отношение просрочек к общему количеству кредитов
+    df_new_features["overdue_proportion"] = df_new_features["overdue_count_1"] / (
+        df_new_features["total_credits_count"] + 1
+    )
+    # Есть ли открытые кредиты
+    df_new_features["has_open_credits"] = (
+        df_new_features["open_credits_count"] > 0
+    ).astype(int)
+    print("Были созданы новые признаки (had_overdue, overdue_proportion, has_open_credits)")
+    return df_new_features
+
+
+def prepare_data(df, test_size=0.2, top_n=50, min_frequency=100):
     """
     Общая подготовка данных для всех моделей: фильтрация признаков, заполнение пропусков, кодирование категорий, разделение на train/test
     """
@@ -307,11 +319,15 @@ def prepare_data(df, test_size=0.2, top_n=50):
     df_filled = fill_nan_values(data_filtered)
     print(f"После заполнения пропусков: {df_filled.shape}")
 
-    target_col = "target"
-    y = df_filled[target_col]
-    X = df_filled.drop(columns=[target_col])
+    df_new_features = feature_engineering(df_filled)
 
-    X_encoded, y_encoded = encode_categorical_features(X, y, min_frequency=50)
+    target_col = "target"
+    y = df_new_features[target_col]
+    X = df_new_features.drop(columns=[target_col])
+
+    X_encoded, y_encoded = encode_categorical_features(
+        X, y, min_frequency=min_frequency
+    )
     print(f"После кодирования: {X_encoded.shape}")
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -321,100 +337,163 @@ def prepare_data(df, test_size=0.2, top_n=50):
 
     selector = FeatureSelector()
     selector.select_by_rf(X_train, y_train, top_n=top_n)
+    print("Выбранные признаки с помощью Random Forest")
+    print(selector.get_selected_features())
 
     return X_train, X_test, y_train, y_test, selector
 
 
-def train_logistic_regression(X_train, X_test, y_train, y_test, selector):
-    """Логистическая регрессия"""
-    # Отбор топ-20 по RF важности
-    selected_features = selector.get_selected_features()[:20]
-    X_train_selected = X_train[selected_features]
-    X_test_selected = X_test[selected_features]
+class ModelTrainer:
+    """
+    Класс для обучения моделей
+    """
 
-    X_train_scaled, scaler = scale_features(
-        X_train_selected, X_train_selected.columns.tolist()
-    )
-    X_test_scaled = X_test_selected.copy()
-    X_test_scaled[X_train_selected.columns] = scaler.transform(
-        X_test_selected[X_train_selected.columns]
-    )
+    def __init__(self, random_state=42):
+        self.random_state = random_state
+        self.results = {}
+        self.models = {}
 
-    model = LogisticRegression(random_state=42, max_iter=1000, class_weight="balanced")
-    model.fit(X_train_scaled, y_train)
+    def get_selected_data(self, X_train, X_test, selector, top_n):
+        """Отбор признаков"""
+        selected_features = selector.get_selected_features()[:top_n]
+        return X_train[selected_features], X_test[selected_features]
 
-    y_pred = model.predict(X_test_scaled)
-    y_pred_proba = model.predict_proba(X_test_scaled)[:, 1]
-    auc = roc_auc_score(y_test, y_pred_proba)
+    def scale(self, X_train, X_test):
+        """Масштабирование для моделей, которым это нужно"""
+        X_train_scaled, scaler = scale_features(X_train, X_train.columns.tolist())
+        X_test_scaled = X_test.copy()
+        X_test_scaled[X_train.columns] = scaler.transform(X_test[X_train.columns])
+        return X_train_scaled, X_test_scaled
 
-    print(f"ROC-AUC: {auc:.4f}")
-    print(classification_report(y_test, y_pred))
+    def print_metrics(self, y_test, y_pred, y_pred_proba, model_name):
+        """Вывод метрик"""
+        auc = roc_auc_score(y_test, y_pred_proba)
+        print(f"Метрики {model_name}")
+        print(f"ROC-AUC: {auc:.4f}")
+        print("Classification Report:")
+        print(classification_report(y_test, y_pred))
+        return auc
 
-    return model, auc
+    def train_model(
+        self,
+        model,
+        X_train,
+        X_test,
+        y_train,
+        y_test,
+        selector,
+        top_n,
+        need_scale,
+        model_name,
+    ):
+        """Обучение модели"""
+        print(model_name)
+        X_train_sel, X_test_sel = self.get_selected_data(
+            X_train, X_test, selector, top_n
+        )
+        print(f"Признаков: {X_train_sel.shape[1]}")
 
+        # Масштабирование (если нужно)
+        if need_scale:
+            X_train_sel, X_test_sel = self.scale(X_train_sel, X_test_sel)
 
-def train_decision_tree(X_train, X_test, y_train, y_test, selector):
-    """Дерево решений"""
-    # Отбор топ-30 по RF
-    selected_features = selector.get_selected_features()[:30]
-    X_train_selected = X_train[selected_features]
-    X_test_selected = X_test[selected_features]
+        model.fit(X_train_sel, y_train)
 
-    model = DecisionTreeClassifier(random_state=42, class_weight="balanced")
-    model.fit(X_train_selected, y_train)
+        y_pred = model.predict(X_test_sel)
+        y_pred_proba = model.predict_proba(X_test_sel)[:, 1]
 
-    y_pred = model.predict(X_test_selected)
-    y_pred_proba = model.predict_proba(X_test_selected)[:, 1]
-    auc = roc_auc_score(y_test, y_pred_proba)
+        auc = self.print_metrics(y_test, y_pred, y_pred_proba, model_name)
 
-    print(f"ROC-AUC: {auc:.4f}")
-    print(classification_report(y_test, y_pred))
+        self.models[model_name] = model
+        self.results[model_name] = auc
 
-    return model, auc
+        return model, auc
 
+    def train_logistic_regression(
+        self, X_train, X_test, y_train, y_test, selector, top_n=20
+    ):
+        """Логистическая регрессия"""
+        model = LogisticRegression(
+            random_state=self.random_state, max_iter=1000, class_weight="balanced"
+        )
+        return self.train_model(
+            model,
+            X_train,
+            X_test,
+            y_train,
+            y_test,
+            selector,
+            top_n,
+            need_scale=True,
+            model_name="Logistic Regression",
+        )
 
-def train_random_forest(X_train, X_test, y_train, y_test, selector):
-    """Случайный лес"""
-    # Отбор топ-50 по RF важности
-    selected_features = selector.get_selected_features()[:50]
-    X_train_selected = X_train[selected_features]
-    X_test_selected = X_test[selected_features]
+    def train_decision_tree(self, X_train, X_test, y_train, y_test, selector, top_n=20):
+        """Дерево решений"""
+        model = DecisionTreeClassifier(
+            random_state=self.random_state, class_weight="balanced"
+        )
+        return self.train_model(
+            model,
+            X_train,
+            X_test,
+            y_train,
+            y_test,
+            selector,
+            top_n,
+            need_scale=False,
+            model_name="Decision Tree",
+        )
 
-    model = RandomForestClassifier(
-        n_estimators=100, random_state=42, class_weight="balanced"
-    )
-    model.fit(X_train_selected, y_train)
+    def train_random_forest(self, X_train, X_test, y_train, y_test, selector, top_n=20):
+        """Случайный лес"""
+        model = RandomForestClassifier(
+            n_estimators=100, random_state=self.random_state, class_weight="balanced"
+        )
+        return self.train_model(
+            model,
+            X_train,
+            X_test,
+            y_train,
+            y_test,
+            selector,
+            top_n,
+            need_scale=False,
+            model_name="Random Forest",
+        )
 
-    y_pred = model.predict(X_test_selected)
-    y_pred_proba = model.predict_proba(X_test_selected)[:, 1]
-    auc = roc_auc_score(y_test, y_pred_proba)
+    def train_gradient_boosting(
+        self, X_train, X_test, y_train, y_test, selector, top_n=20
+    ):
+        """Градиентный бустинг"""
+        model = GradientBoostingClassifier(
+            n_estimators=100,
+            random_state=self.random_state,
+            learning_rate=0.1,
+            max_depth=3,
+        )
+        return self.train_model(
+            model,
+            X_train,
+            X_test,
+            y_train,
+            y_test,
+            selector,
+            top_n,
+            need_scale=False,
+            model_name="Gradient Boosting",
+        )
 
-    print(f"ROC-AUC: {auc:.4f}")
-    print(classification_report(y_test, y_pred))
+    def train_all(self, X_train, X_test, y_train, y_test, selector, top_n=20):
+        """Обучение всех моделей"""
+        self.train_logistic_regression(
+            X_train, X_test, y_train, y_test, selector, top_n
+        )
+        self.train_decision_tree(X_train, X_test, y_train, y_test, selector, top_n)
+        self.train_random_forest(X_train, X_test, y_train, y_test, selector, top_n)
+        self.train_gradient_boosting(X_train, X_test, y_train, y_test, selector, top_n)
 
-    return model, auc
-
-
-def train_gradient_boosting(X_train, X_test, y_train, y_test, selector):
-    """Градиентный бустинг"""
-    # Отбор топ-35 по RF важности
-    selected_features = selector.get_selected_features()[:35]
-    X_train_selected = X_train[selected_features]
-    X_test_selected = X_test[selected_features]
-
-    model = GradientBoostingClassifier(
-        n_estimators=100, random_state=42, learning_rate=0.1, max_depth=3
-    )
-    model.fit(X_train_selected, y_train)
-
-    y_pred = model.predict(X_test_selected)
-    y_pred_proba = model.predict_proba(X_test_selected)[:, 1]
-    auc = roc_auc_score(y_test, y_pred_proba)
-
-    print(f"ROC-AUC: {auc:.4f}")
-    print(classification_report(y_test, y_pred))
-
-    return model, auc
+        return self.results
 
 
 def main():
@@ -435,6 +514,8 @@ def main():
 
     TOP_N_FEATURES = 50
 
+    MIN_FREQUENCY_IN_CAT_FEATURE = 5
+
     # Объединяем по SK_ID_CURR в один датафрейм
     df = application_df.merge(features_df, on="sk_id_curr", how="left")
     # Удаляем test данные
@@ -443,22 +524,16 @@ def main():
     print(f"Датафрейм с данными для обучения {df.shape}")
     print(df.head())
 
-    X_train, X_test, y_train, y_test, selector = prepare_data(df, test_size=TEST_SIZE, top_n=TOP_N_FEATURES)
+    X_train, X_test, y_train, y_test, selector = prepare_data(
+        df,
+        test_size=TEST_SIZE,
+        top_n=TOP_N_FEATURES,
+        min_frequency=MIN_FREQUENCY_IN_CAT_FEATURE,
+    )
 
     # Обучение всех моделей
-    results = {}
-
-    lr_model, lr_auc = train_logistic_regression(X_train, X_test, y_train, y_test, selector)
-    results["Logistic Regression"] = lr_auc
-
-    dt_model, dt_auc = train_decision_tree(X_train, X_test, y_train, y_test, selector)
-    results["Decision Tree"] = dt_auc
-
-    rf_model, rf_auc = train_random_forest(X_train, X_test, y_train, y_test, selector)
-    results["Random Forest"] = rf_auc
-
-    gb_model, gb_auc = train_gradient_boosting(X_train, X_test, y_train, y_test, selector)
-    results["Gradient Boosting"] = gb_auc
+    trainer = ModelTrainer(random_state=42)
+    trainer.train_all(X_train, X_test, y_train, y_test, selector, top_n=20)
 
 
 if __name__ == "__main__":

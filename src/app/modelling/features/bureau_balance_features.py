@@ -39,12 +39,12 @@ def generate_bureau_balance_features(balance_df: pd.DataFrame, bureau_df: pd.Dat
     # 1. Кол-во открытых кредитов
     # C means closed, X means status unknown, 0 means no DPD, 1 means maximal did during month between 1-30, 2 means DPD 31-60,… 5 means DPD 120+ or sold or written off
     open_df = latest_status[~latest_status["status"].isin(["C", "X"])]
-    open_counts = open_df.groupby("sk_id_curr")["sk_id_bureau"].nunique()
+    open_counts = open_df.groupby("sk_id_curr")["sk_id_bureau"].count()
     features["open_credits_count"] = features["sk_id_curr"].map(open_counts).fillna(0)
 
     # 2. Кол-во закрытых кредитов
     closed_df = latest_status[latest_status["status"] == "C"]
-    closed_counts = closed_df.groupby("sk_id_curr")["sk_id_bureau"].nunique()
+    closed_counts = closed_df.groupby("sk_id_curr")["sk_id_bureau"].count()
     features["closed_credits_count"] = (
         features["sk_id_curr"].map(closed_counts).fillna(0)
     )

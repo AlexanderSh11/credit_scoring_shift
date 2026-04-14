@@ -90,15 +90,8 @@ def generate_bureau_balance_features(balance_df: pd.DataFrame, bureau_df: pd.Dat
     # Нам нужен минимальный такой интервал среди всех кредитов клиента, т.к. нужен последний закрытый кредит
     # Для каждого кредита находим минимальный months_balance где status = "C"
     closed_credits = merged_df[merged_df["status_latest"] == "C"]
-    closed_month_per_credit = closed_credits.groupby("sk_id_bureau")[
-        "months_balance"
-    ].min()
-    # Присоединяем sk_id_curr
-    closed_with_curr = closed_month_per_credit.reset_index().merge(
-        bureau_df[["sk_id_bureau", "sk_id_curr"]], on="sk_id_bureau"
-    )
     # Для клиента берем максимальный months_balance (самый свежий закрытый кредит)
-    last_closed_per_client = closed_with_curr.groupby("sk_id_curr")[
+    last_closed_per_client = closed_credits.groupby("sk_id_curr")[
         "months_balance"
     ].max()
     features["last_closed_interval"] = (

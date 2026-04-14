@@ -21,32 +21,12 @@ def get_house_columns(df):
     Автоматическое определение колонок с характеристиками дома
     """
     # паттерны для поиска в названиях колонок
-    house_patterns = [
-        "apartments",
-        "basementarea",
-        "years_beginexpluatation",
-        "years_build",
-        "commonarea",
-        "elevators",
-        "entrances",
-        "floorsmax",
-        "floorsmin",
-        "landarea",
-        "livingapartments",
-        "livingarea",
-        "nonlivingapartments",
-        "nonlivingarea",
-        "fondkapremont",
-        "housetype",
-        "totalarea",
-        "wallsmaterial",
-        "emergencystate",
-    ]
+    house_suffixes = ['_avg', '_mode', '_medi']
 
     house_cols = []
 
     for col in df.columns:
-        if any(pattern in col for pattern in house_patterns):
+        if any(col.endswith(suffix) for suffix in house_suffixes):
             house_cols.append(col)
 
     return house_cols

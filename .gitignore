@@ -7,4 +7,5 @@ __pycache__/
 src/app/modelling/features/*.csv
 
 hw6/models/*.pkl
+hw6/data/*.csv
 src/metrics/*.pkl

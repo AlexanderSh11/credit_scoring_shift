@@ -172,17 +172,15 @@ def generate_application_features(df: pd.DataFrame) -> pd.DataFrame:
 
     # 12. Поделим людей на группы в зависимости от пола и образования. В каждой группе посчитаем средний доход. Сделаем признак разница между средним доходом в группе и доходом заявителя
     # Группируем по полу (CODE_GENDER) и образованию (NAME_EDUCATION_TYPE)
-    gender_educ_group = (
-        df["code_gender"].astype(str) + "_" + df["name_education_type"].astype(str)
-    )
+    gender_educ_group_all = df["code_gender"].astype(str) + "_" + df["name_education_type"].astype(str)
+    gender_educ_group_train = train_df["code_gender"].astype(str) + "_" + train_df["name_education_type"].astype(str)
 
-    # Считаем средний доход в группе
-    group_avg_income = df.groupby(gender_educ_group)["amt_income_total"].transform(
-        "mean"
-    )
+    # Считаем средний доход по группе на train
+    group_avg_income = train_df.groupby(gender_educ_group_train)["amt_income_total"].mean()
 
-    # Разница между доходом клиента и средним по группе
-    features["income_diff_from_group_avg"] = df["amt_income_total"] - group_avg_income
+    # Разница между доходом клиента и средним по группе. каждой группе из df ставим в соответствие средний доход из train
+    # fillna(group_avg_income.mean()) для обработки групп, которые отсутствуют в train
+    features["income_diff_from_group_avg"] = df["amt_income_total"] - gender_educ_group_all.map(group_avg_income).fillna(group_avg_income.mean())
 
     # 13. Посчитать процентную ставку (*) (можно использовать все таблицы, например previous_application)
     # Из таблицы previous_application найдем все уникальные сроки прошлых кредитов клиентов

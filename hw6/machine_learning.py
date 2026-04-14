@@ -58,6 +58,10 @@ def load_features_from_csv(features_dir=None, features_files=[]):
     return features_df
 
 
+def save_dataframe(df, path_dir, filename):
+    df.to_csv(path_dir / filename)
+
+
 def drop_columns(df, cols=[], label=""):
     print(f"Удалены {len(cols)} признаков ({label}):")
     print(cols)
@@ -352,12 +356,13 @@ class ModelTrainer:
     Класс для обучения моделей
     """
 
-    def __init__(self, random_state=42, models_dir="models"):
+    def __init__(self, random_state=42, models_dir="models", data_path_dir=None):
         self.random_state = random_state
         self.best_params = {}
         self.results = {}
         self.models = {}
         self.models_dir = Path(models_dir)
+        self.data_path_dir = data_path_dir
 
     def save_model(self, model, model_name):
         """Сохранение модели в pickle файл"""
@@ -399,6 +404,7 @@ class ModelTrainer:
         need_scale,
         model_name,
         param_grid=None,
+        data_filename=None
     ):
         """Обучение модели"""
         print(model_name)
@@ -410,6 +416,12 @@ class ModelTrainer:
         # Масштабирование (если нужно)
         if need_scale:
             X_train_sel, X_test_sel = self.scale(X_train_sel, X_test_sel)
+
+        if self.data_path_dir and data_filename:
+            save_dataframe(df=X_train_sel, path_dir=self.data_path_dir, filename=f"{data_filename}_train.csv")
+            save_dataframe(df=X_test_sel, path_dir=self.data_path_dir, filename=f"{data_filename}_test.csv")
+            save_dataframe(df=pd.DataFrame(y_train), path_dir=self.data_path_dir, filename=f"{data_filename}_y_train.csv")
+            save_dataframe(df=pd.DataFrame(y_test), path_dir=self.data_path_dir, filename=f"{data_filename}_y_test.csv")
 
         start_time = time.time()
 
@@ -466,6 +478,7 @@ class ModelTrainer:
             need_scale=True,
             model_name="Logistic Regression",
             param_grid=param_grid,
+            data_filename="scaled_data"
         )
 
     def train_decision_tree(self, X_train, X_test, y_train, y_test, selector, top_n=20):
@@ -582,6 +595,8 @@ def main():
 
     MODELS_DIR = PROJECT_DIR / "hw6" / "models"
 
+    DATA_PATH_DIR = PROJECT_DIR / "hw6" / "data"
+
     # Объединяем по SK_ID_CURR в один датафрейм
     df = application_df.merge(features_df, on="sk_id_curr", how="left")
     # Удаляем test данные
@@ -598,7 +613,7 @@ def main():
     )
 
     # Обучение всех моделей
-    trainer = ModelTrainer(random_state=42, models_dir=MODELS_DIR)
+    trainer = ModelTrainer(random_state=42, models_dir=MODELS_DIR, data_path_dir=DATA_PATH_DIR)
     trainer.train_all(X_train, X_test, y_train, y_test, selector, top_n=20)
 
 

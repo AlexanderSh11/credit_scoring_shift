@@ -112,7 +112,7 @@ def generate_application_features(df: pd.DataFrame) -> pd.DataFrame:
 
     # 5. В каком возрасте клиент сменил документ
     features["age_at_id_change"] = (
-        (-df["days_birth"] - df["days_id_publish"]) // 365.2425
+        (-df["days_birth"] - -df["days_id_publish"]) // 365.2425
     ).astype(int)
 
     # 6. Признак задержки смены документа. Документ выдается или меняется в 14, 20 и 45 лет

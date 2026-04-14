@@ -2,7 +2,6 @@ import os
 import sys
 import numpy as np
 from typing import List
-from datetime import datetime
 
 import pandas as pd
 
@@ -106,9 +105,6 @@ def generate_application_features(df: pd.DataFrame) -> pd.DataFrame:
     # 4. Сколько лет назад был сменён документ
     # Согласно описанию: DAYS_ID_PUBLISH - сколько дней до заявки сменили документ
     features["years_since_id_change"] = (-df["days_id_publish"] // 365.2425).astype(int)
-    # Год смены документа
-    current_year = datetime.now().year
-    features["id_change_year"] = current_year - features["years_since_id_change"]
 
     # 5. В каком возрасте клиент сменил документ
     features["age_at_id_change"] = (

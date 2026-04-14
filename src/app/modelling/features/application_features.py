@@ -33,11 +33,15 @@ def get_house_columns(df: pd.DataFrame) -> List[str]:
     return house_cols
 
 
-def find_interest_rate(PV: float, P: float, n: float) -> float:
+def find_interest_rate(
+    PV: float, P: float, n: float, low: float = 0.0001, high: float = 0.1
+) -> float:
     """
     :param PV: сумма кредита
     :param P: ежемесячный платеж
     :param n: срок в месяцах
+    :param low: нижняя граница ставки
+    :param high: верхняя граница ставки
     """
     if pd.isna(PV) or pd.isna(P) or pd.isna(n):
         return np.nan
@@ -182,7 +186,7 @@ def generate_application_features(df: pd.DataFrame) -> pd.DataFrame:
 
         for n in possible_months:
             # Поиск ставки
-            rate = find_interest_rate(PV, P, n)
+            rate = find_interest_rate(PV, P, n, low=0.0001, high=0.1)
             if not pd.isna(rate) and 0 < rate <= 100:
                 return rate
         return np.nan

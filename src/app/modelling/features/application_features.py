@@ -1,6 +1,7 @@
 import os
 import sys
 import numpy as np
+from typing import List
 from datetime import datetime
 
 import pandas as pd
@@ -16,12 +17,12 @@ sys.path.insert(0, project_root)
 from src.app.utils.db_manager import DatabaseManager  # noqa: E402
 
 
-def get_house_columns(df):
+def get_house_columns(df: pd.DataFrame) -> List[str]:
     """
     Автоматическое определение колонок с характеристиками дома
     """
     # паттерны для поиска в названиях колонок
-    house_suffixes = ['_avg', '_mode', '_medi']
+    house_suffixes = ("_avg", "_mode", "_medi")
 
     house_cols = []
 
@@ -32,7 +33,7 @@ def get_house_columns(df):
     return house_cols
 
 
-def find_interest_rate(PV, P, n):
+def find_interest_rate(PV: float, P: float, n: float) -> float:
     """
     :param PV: сумма кредита
     :param P: ежемесячный платеж
@@ -74,7 +75,7 @@ def find_interest_rate(PV, P, n):
     return result
 
 
-def generate_application_features(df):
+def generate_application_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Генерация признаков из application таблицы
     """

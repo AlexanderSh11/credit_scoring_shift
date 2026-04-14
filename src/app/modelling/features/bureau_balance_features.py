@@ -1,6 +1,7 @@
 import os
 import sys
 import numpy as np
+import pandas as pd
 
 # Получаем абсолютный путь к текущему файлу
 current_file = os.path.abspath(__file__)
@@ -13,7 +14,7 @@ sys.path.insert(0, project_root)
 from src.app.utils.db_manager import DatabaseManager  # noqa: E402
 
 
-def generate_bureau_balance_features(balance_df, bureau_df):
+def generate_bureau_balance_features(balance_df: pd.DataFrame, bureau_df: pd.DataFrame) -> pd.DataFrame:
     """
     Генерация признаков из bureau_balance таблицы
     """

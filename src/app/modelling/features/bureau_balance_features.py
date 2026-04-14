@@ -103,9 +103,10 @@ def generate_bureau_balance_features(balance_df: pd.DataFrame, bureau_df: pd.Dat
     # 9. Интервал между взятием последнего активного займа и текущей заявкой
     # Активные кредиты: все статусы кроме "C" (закрыт) и "X" (неизвестно)
     active_credits = merged_df[~merged_df["status_latest"].isin(["C", "X"])]
+    # Для каждого кредита берем минимальный months_balance (момент взятия кредита)
     active_month_per_credit = active_credits.groupby("sk_id_bureau")[
         "months_balance"
-    ].max()
+    ].min()
     active_with_curr = active_month_per_credit.reset_index().merge(
         bureau_df[["sk_id_bureau", "sk_id_curr"]], on="sk_id_bureau"
     )

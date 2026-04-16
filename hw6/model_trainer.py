@@ -8,8 +8,8 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 
-from .data_loading import save_dataframe
-from .data_preprocessing import scale_features
+from data_loading import save_dataframe
+from data_preprocessing import scale_features
 
 
 class ModelTrainer:
@@ -25,26 +25,26 @@ class ModelTrainer:
         self.models_dir = Path(models_dir)
         self.data_path_dir = data_path_dir
 
-    def save_model(self, model, model_name):
+    def _save_model(self, model, model_name):
         """Сохранение модели в pickle файл"""
         filename = self.models_dir / f"{model_name.lower().replace(' ', '_')}.pkl"
         with open(filename, "wb") as f:
             pickle.dump(model, f)
         print(f"Модель сохранена: {filename}")
 
-    def get_selected_data(self, X_train, X_test, selector, top_n):
+    def _get_selected_data(self, X_train, X_test, selector, top_n):
         """Отбор признаков"""
         selected_features = selector.get_selected_features()[:top_n]
         return X_train[selected_features], X_test[selected_features]
 
-    def scale(self, X_train, X_test):
+    def _scale(self, X_train, X_test):
         """Масштабирование для моделей, которым это нужно"""
         X_train_scaled, scaler = scale_features(X_train, X_train.columns.tolist())
         X_test_scaled = X_test.copy()
         X_test_scaled[X_train.columns] = scaler.transform(X_test[X_train.columns])
         return X_train_scaled, X_test_scaled
 
-    def print_metrics(self, y_test, y_pred, y_pred_proba, model_name):
+    def _print_metrics(self, y_test, y_pred, y_pred_proba, model_name):
         """Вывод метрик"""
         auc = roc_auc_score(y_test, y_pred_proba)
         print(f"Метрики {model_name}")
@@ -53,7 +53,7 @@ class ModelTrainer:
         print(classification_report(y_test, y_pred))
         return auc
 
-    def train_model(
+    def _train_model(
         self,
         model,
         X_train,
@@ -69,14 +69,14 @@ class ModelTrainer:
     ):
         """Обучение модели"""
         print(model_name)
-        X_train_sel, X_test_sel = self.get_selected_data(
+        X_train_sel, X_test_sel = self._get_selected_data(
             X_train, X_test, selector, top_n
         )
         print(f"Признаков: {X_train_sel.shape[1]}")
 
         # Масштабирование (если нужно)
         if need_scale:
-            X_train_sel, X_test_sel = self.scale(X_train_sel, X_test_sel)
+            X_train_sel, X_test_sel = self._scale(X_train_sel, X_test_sel)
 
         if self.data_path_dir and data_filename:
             save_dataframe(
@@ -121,16 +121,16 @@ class ModelTrainer:
         y_pred = model.predict(X_test_sel)
         y_pred_proba = model.predict_proba(X_test_sel)[:, 1]
 
-        auc = self.print_metrics(y_test, y_pred, y_pred_proba, model_name)
+        auc = self._print_metrics(y_test, y_pred, y_pred_proba, model_name)
 
         self.models[model_name] = model
         self.results[model_name] = auc
 
-        self.save_model(model, model_name)
+        self._save_model(model, model_name)
 
         return model, auc
 
-    def train_logistic_regression(
+    def _train_logistic_regression(
         self, X_train, X_test, y_train, y_test, selector, top_n=20
     ):
         """Логистическая регрессия"""
@@ -144,7 +144,7 @@ class ModelTrainer:
             "solver": ["liblinear"],
         }
 
-        return self.train_model(
+        return self._train_model(
             model,
             X_train,
             X_test,
@@ -158,7 +158,7 @@ class ModelTrainer:
             data_filename="scaled_data",
         )
 
-    def train_decision_tree(self, X_train, X_test, y_train, y_test, selector, top_n=20):
+    def _train_decision_tree(self, X_train, X_test, y_train, y_test, selector, top_n=20):
         """Дерево решений"""
         model = DecisionTreeClassifier(
             random_state=self.random_state, class_weight="balanced"
@@ -170,7 +170,7 @@ class ModelTrainer:
             "min_samples_leaf": [1, 2, 4],
         }
 
-        return self.train_model(
+        return self._train_model(
             model,
             X_train,
             X_test,
@@ -183,7 +183,7 @@ class ModelTrainer:
             param_grid=param_grid,
         )
 
-    def train_random_forest(self, X_train, X_test, y_train, y_test, selector, top_n=20):
+    def _train_random_forest(self, X_train, X_test, y_train, y_test, selector, top_n=20):
         """Случайный лес"""
         model = RandomForestClassifier(
             n_estimators=100, random_state=self.random_state, class_weight="balanced"
@@ -195,7 +195,7 @@ class ModelTrainer:
             "min_samples_split": [2, 5, 10],
         }
 
-        return self.train_model(
+        return self._train_model(
             model,
             X_train,
             X_test,
@@ -208,7 +208,7 @@ class ModelTrainer:
             param_grid=param_grid,
         )
 
-    def train_gradient_boosting(
+    def _train_gradient_boosting(
         self, X_train, X_test, y_train, y_test, selector, top_n=20
     ):
         """Градиентный бустинг"""
@@ -225,7 +225,7 @@ class ModelTrainer:
             "max_depth": [3, 7],
         }
 
-        return self.train_model(
+        return self._train_model(
             model,
             X_train,
             X_test,
@@ -240,11 +240,11 @@ class ModelTrainer:
 
     def train_all(self, X_train, X_test, y_train, y_test, selector, top_n=20):
         """Обучение всех моделей"""
-        self.train_logistic_regression(
+        self._train_logistic_regression(
             X_train, X_test, y_train, y_test, selector, top_n
         )
-        self.train_decision_tree(X_train, X_test, y_train, y_test, selector, top_n)
-        self.train_random_forest(X_train, X_test, y_train, y_test, selector, top_n)
-        self.train_gradient_boosting(X_train, X_test, y_train, y_test, selector, top_n)
+        self._train_decision_tree(X_train, X_test, y_train, y_test, selector, top_n)
+        self._train_random_forest(X_train, X_test, y_train, y_test, selector, top_n)
+        self._train_gradient_boosting(X_train, X_test, y_train, y_test, selector, top_n)
 
         return self.results

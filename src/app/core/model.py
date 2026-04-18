@@ -9,9 +9,11 @@ class Model(object):
 
     _threshold = 0.3
 
-    def __init__(self, model_path: str):
+    def __init__(self, model_path: str, scaler_path: str):
         """Создает объект класса."""
         self._calculator = Calculator()
+        with open(scaler_path, 'rb') as pickled_scaler:
+            self._scaler = pickle.load(pickled_scaler)
         with open(model_path, 'rb') as pickled_model:
             self._model = pickle.load(pickled_model)
 
@@ -38,4 +40,5 @@ class Model(object):
     def _predict_proba(self, features: Features) -> float:
         """Определяет вероятность невозврата займа."""
         df = features.to_dataframe()
-        return self._model.predict_proba(df)[0, 1]
+        df_scaled = self._scaler.transform(df)
+        return self._model.predict_proba(df_scaled)[0, 1]

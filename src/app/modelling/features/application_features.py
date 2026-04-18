@@ -2,7 +2,6 @@ import os
 import sys
 import numpy as np
 from typing import List
-import matplotlib.pyplot as plt
 import pandas as pd
 
 # Получаем абсолютный путь к текущему файлу
@@ -76,18 +75,6 @@ def find_interest_rate(
     result = annual_rate * 100
 
     return result
-
-
-def show_interest_rate_distribution(df):
-    """Распределение процентной ставки"""
-
-    plt.figure(figsize=(10, 5))
-    plt.hist(df["interest_rate"].dropna(), bins=50, edgecolor="black")
-    plt.xlabel("Процентная ставка (%)")
-    plt.ylabel("Частота")
-    plt.title("Распределение процентной ставки")
-    plt.grid(True)
-    plt.show()
 
 
 def generate_application_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -198,8 +185,6 @@ def generate_application_features(df: pd.DataFrame) -> pd.DataFrame:
         return np.nan
 
     features["interest_rate"] = df.apply(calc_rate, axis=1)
-
-    show_interest_rate_distribution(features)
 
     return features
 

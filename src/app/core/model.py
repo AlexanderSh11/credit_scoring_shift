@@ -1,4 +1,6 @@
 import pickle
+import numpy as np
+import pandas as pd
 
 from src.app.core.api import Features, ScoringResult, ScoringDecision
 from src.app.core.calculator import Calculator
@@ -42,3 +44,10 @@ class Model(object):
         df = features.to_dataframe()
         df_scaled = self._scaler.transform(df)
         return self._model.predict_proba(df_scaled)[0, 1]
+    
+    def predict_proba_batch(self, df: pd.DataFrame) -> np.ndarray:
+        """
+        Предсказание для датафрейма с несколькими объектами.
+        """
+        df_scaled = self._scaler.transform(df)
+        return self._model.predict_proba(df_scaled)[:, 1]

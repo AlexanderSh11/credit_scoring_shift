@@ -6,7 +6,7 @@ __pycache__/
 
 src/app/modelling/features/*.csv
 
-hw6/models/*.pkl
 hw6/data/*.csv
+!hw6/data/test_features.csv
 src/metrics/*.pkl
 src/metrics/catboost_info/

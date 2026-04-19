@@ -211,7 +211,7 @@ def main():
 
     application_features = generate_application_features(df)
     current_dir = os.path.dirname(current_file)
-    output_path = os.path.join(current_dir, "application_features.csv")
+    output_path = os.path.join(current_dir, "data/application_features.csv")
     application_features.to_csv(output_path, index=False)
 
     print(application_features.head(20))

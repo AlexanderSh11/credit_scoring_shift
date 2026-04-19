@@ -141,7 +141,7 @@ def main():
         balance_df=balance_df, bureau_df=bureau_df
     )
     current_dir = os.path.dirname(current_file)
-    output_path = os.path.join(current_dir, "bureau_balance_features.csv")
+    output_path = os.path.join(current_dir, "data/bureau_balance_features.csv")
     bureau_balance_features.to_csv(output_path, index=False)
 
     print(bureau_balance_features.head(20))

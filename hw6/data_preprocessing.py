@@ -201,25 +201,6 @@ def encode_categorical_features(X_train, X_test, y_train, y_test, min_frequency=
     return X_train_enc, X_test_enc, y_train_enc, y_test_enc
 
 
-def remove_outliers(X, cols, multiplier=1.5):
-    """
-    Удаление выбросов методом IQR
-    """
-    X_clean = X.copy()
-
-    for col in cols:
-        Q1 = X_clean[col].quantile(0.25)
-        Q3 = X_clean[col].quantile(0.75)
-        IQR = Q3 - Q1
-        lower_bound = Q1 - multiplier * IQR
-        upper_bound = Q3 + multiplier * IQR
-
-        col_mask = (X_clean[col] < lower_bound) | (X_clean[col] > upper_bound)
-        print(f"{col} удалено {col_mask.sum()} выбросов")
-
-    return X_clean
-
-
 def scale_features(df, cols):
     """
     Масштабирование признаков

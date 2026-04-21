@@ -60,10 +60,10 @@ class Calculator:
         """Изменение суммы займа в зависимости от стажа работы."""
         if days_employed < -3000:
             return min(amount * 1.2, self.max_amount)
-        elif days_employed > -365:
-            return amount * 0.7
         if days_employed == 0:
             return amount * 0.5
+        if days_employed > -365:
+            return amount * 0.7
         return amount
 
     def _apply_days_birth(self, amount: float, days_birth: float) -> float:

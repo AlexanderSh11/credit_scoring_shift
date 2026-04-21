@@ -21,7 +21,7 @@ sys.path.insert(0, str(PROJECT_DIR))
 from src.app.utils.db_manager import DatabaseManager  # noqa: E402
 
 
-FEATURES_DIR = PROJECT_DIR / "src" / "app" / "modelling" / "features"
+FEATURES_DIR = PROJECT_DIR / "src" / "app" / "modelling" / "features" / "data"
 FEATURES_FILES = {
     "application": "application_features.csv",
     "bureau": "bureau_features.csv",

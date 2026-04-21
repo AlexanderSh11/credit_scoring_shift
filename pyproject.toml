@@ -16,7 +16,8 @@ dependencies = [
     "scipy (>=1.11,<2.0)",
     "scikit-learn (==1.6.1)",
     "matplotlib (==3.7.5)",
-    "plotly (>=6.6.0,<7.0.0)"
+    "plotly (>=6.6.0,<7.0.0)",
+    "dvc (>=3.67.1,<4.0.0)"
 ]
 
 

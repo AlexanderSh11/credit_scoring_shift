@@ -1,12 +1,7 @@
 from src.app.core.api import Features
-
+from src.config.config import CalculatorConfig
 
 class Calculator:
-    max_amount = 300_000
-    high_amount = 200_000
-    medium_amount = 50_000
-    min_amount = 20_000
-    days_in_year = 365.2425
 
     def calc_amount(
         self,
@@ -22,18 +17,18 @@ class Calculator:
         amount = self._apply_days_employed(amount, features.days_employed)
         amount = self._apply_days_birth(amount, features.days_birth)
         amount = self._apply_interest_rate(amount, features.interest_rate)
-        amount = max(amount, self.min_amount)
+        amount = max(amount, CalculatorConfig.MIN_AMOUNT)
 
         return int(round(amount, -2))
 
     def _get_base_amount(self, proba: float) -> float:
         """Расчет базовой суммы займа в зависимости от пробы."""
         if proba < 0.1:
-            return self.max_amount
+            return CalculatorConfig.MAX_AMOUNT
         elif proba < 0.2:
-            return self.high_amount
+            return CalculatorConfig.HIGH_AMOUNT
         else:
-            return self.medium_amount
+            return CalculatorConfig.MEDIUM_AMOUNT
 
     def _apply_weighted_ext_score(
         self, amount: float, weighted_ext_score: float
@@ -41,7 +36,7 @@ class Calculator:
         """Более высокий взвешенный скор внешних источников - более низкий риск дефолта."""
         if weighted_ext_score > 0.7:
             # максимальная сумма займа - max_amount
-            return min(amount * 1.5, self.max_amount)
+            return min(amount * 1.5, CalculatorConfig.MAX_AMOUNT)
         if weighted_ext_score < 0.5:
             return amount * 0.8
         return amount
@@ -53,13 +48,13 @@ class Calculator:
         if annuity_to_income_proportion > 0.4:
             return amount * 0.8
         if annuity_to_income_proportion < 0.1:
-            return min(amount * 1.2, self.max_amount)
+            return min(amount * 1.2, CalculatorConfig.MAX_AMOUNT)
         return amount
 
     def _apply_days_employed(self, amount: float, days_employed: float) -> float:
         """Изменение суммы займа в зависимости от стажа работы."""
         if days_employed < -3000:
-            return min(amount * 1.2, self.max_amount)
+            return min(amount * 1.2, CalculatorConfig.MAX_AMOUNT)
         if days_employed == 0:
             return amount * 0.5
         if days_employed > -365:
@@ -71,11 +66,11 @@ class Calculator:
         Изменение суммы займа в зависимости от возраста.
         Стат. тесты в прошлом задании показали значимость возраста клиента.
         """
-        age_years = abs(days_birth) / self.days_in_year
+        age_years = abs(days_birth) / CalculatorConfig.DAYS_IN_YEAR
         if age_years < 25:
             return amount * 0.7
         if age_years > 50:
-            return min(amount * 1.05, self.max_amount)
+            return min(amount * 1.05, CalculatorConfig.MAX_AMOUNT)
         return amount
 
     def _apply_interest_rate(self, amount: float, interest_rate: float) -> float:

@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 from src.app.core.api import Features
 from src.app.core.calculator import Calculator
+from src.config.config import CalculatorConfig
 
 
 @pytest.fixture
@@ -14,12 +15,12 @@ def calc():
 @pytest.mark.parametrize(
     "proba,expected",
     [
-        pytest.param(0.0, Calculator.max_amount, id="proba_0.0_max_amount"),
-        pytest.param(0.09, Calculator.max_amount, id="proba_0.09_max_amount"),
-        pytest.param(0.1, Calculator.high_amount, id="proba_0.1_high_amount"),
-        pytest.param(0.19, Calculator.high_amount, id="proba_0.19_high_amount"),
-        pytest.param(0.2, Calculator.medium_amount, id="proba_0.2_medium_amount"),
-        pytest.param(0.3, Calculator.medium_amount, id="proba_0.3_medium_amount"),
+        pytest.param(0.0, CalculatorConfig.MAX_AMOUNT, id="proba_0.0_max_amount"),
+        pytest.param(0.09, CalculatorConfig.MAX_AMOUNT, id="proba_0.09_max_amount"),
+        pytest.param(0.1, CalculatorConfig.HIGH_AMOUNT, id="proba_0.1_high_amount"),
+        pytest.param(0.19, CalculatorConfig.HIGH_AMOUNT, id="proba_0.19_high_amount"),
+        pytest.param(0.2, CalculatorConfig.MEDIUM_AMOUNT, id="proba_0.2_medium_amount"),
+        pytest.param(0.3, CalculatorConfig.MEDIUM_AMOUNT, id="proba_0.3_medium_amount"),
     ],
 )
 def test_get_base_amount(calc: Calculator, proba: float, expected: int):
@@ -84,7 +85,7 @@ def test_coef_methods(calc: Calculator, method_name: str, value: float, expected
             -4000,
             -20000,
             10,
-            Calculator.max_amount,
+            CalculatorConfig.MAX_AMOUNT,
             id="all_positive_factors_max",
         ),
         # Все факторы отрицательные, amount = минимальная сумма
@@ -95,7 +96,7 @@ def test_coef_methods(calc: Calculator, method_name: str, value: float, expected
             0,
             -5000,
             25,
-            Calculator.min_amount,
+            CalculatorConfig.MIN_AMOUNT,
             id="all_negative_factors_min",
         ),
         # Все факторы нейтральные, amount = базовая сумма high_amount
@@ -106,7 +107,7 @@ def test_coef_methods(calc: Calculator, method_name: str, value: float, expected
             -1000,
             -15000,
             15,
-            Calculator.high_amount,
+            CalculatorConfig.HIGH_AMOUNT,
             id="neutral_factors_high_amount",
         ),
     ],
@@ -135,4 +136,4 @@ def test_calc_amount_integration(
     assert result == expected
     assert isinstance(result, int)
     assert result % 100 == 0
-    assert calc.min_amount <= result <= calc.max_amount
+    assert CalculatorConfig.MIN_AMOUNT <= result <= CalculatorConfig.MAX_AMOUNT

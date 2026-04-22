@@ -1,3 +1,4 @@
+from dataclasses import asdict
 import pickle
 import numpy as np
 import pandas as pd
@@ -41,9 +42,9 @@ class Model(object):
 
     def _predict_proba(self, features: Features) -> float:
         """Определяет вероятность невозврата займа."""
-        df = features.to_dataframe()
-        df_scaled = self._scaler.transform(df)
-        return self._model.predict_proba(df_scaled)[0, 1]
+        X = [list(asdict(features).values())]
+        X_scaled = self._scaler.transform(X)
+        return self._model.predict_proba(X_scaled)[0, 1]
     
     def predict_proba_batch(self, df: pd.DataFrame) -> np.ndarray:
         """

@@ -1,5 +1,4 @@
 import pytest
-from unittest.mock import Mock
 
 from src.app.core.api import Features
 from src.app.core.calculator import Calculator
@@ -77,7 +76,6 @@ def test_coef_methods(calc: Calculator, method_name: str, value: float, expected
 @pytest.mark.parametrize(
     "proba,weighted_score,annuity_proportion,days_employed,days_birth,interest_rate,expected",
     [
-        # Все факторы положительные, amount = максимальная сумма
         pytest.param(
             0.05,
             0.9,
@@ -86,20 +84,48 @@ def test_coef_methods(calc: Calculator, method_name: str, value: float, expected
             -20000,
             10,
             CalculatorConfig.MAX_AMOUNT,
-            id="all_positive_factors_max",
+            id="low_proba_high_score_low_annuity_to_income_high_employment_old_age_low_rate_get_max_amount",
         ),
-        # Все факторы отрицательные, amount = минимальная сумма
         pytest.param(
-            0.3,
+            0.15,
+            0.8,
+            0.15,
+            -2000,
+            -15000,
+            12,
+            CalculatorConfig.MAX_AMOUNT,
+            id="middle_proba_high_score_middle_annuity_to_income_middle_employment_middle_age_low_rate_get_max_amount",
+        ),
+        pytest.param(
+            0.15,
+            0.6,
+            0.15,
+            -200,
+            -8000,
+            15,
+            98_000,
+            id="middle_proba_middle_score_middle_annuity_to_income_low_employment_young_age_middle_rate_get_decreased_amount",
+        ),
+        pytest.param(
+            0.25,
             0.4,
             0.5,
             0,
-            -5000,
+            -10000,
             25,
             CalculatorConfig.MIN_AMOUNT,
-            id="all_negative_factors_min",
+            id="high_proba_low_score_high_annuity_to_income_unemployed_young_age_high_rate_get_min_amount",
         ),
-        # Все факторы нейтральные, amount = базовая сумма high_amount
+        pytest.param(
+            0.05,
+            0.9,
+            0.05,
+            -4000,
+            -20000,
+            22,
+            240_000,
+            id="low_proba_high_score_low_annuity_to_income_high_employment_old_age_high_rate_get_decreased_amount",
+        ),
         pytest.param(
             0.15,
             0.6,
@@ -108,7 +134,27 @@ def test_coef_methods(calc: Calculator, method_name: str, value: float, expected
             -15000,
             15,
             CalculatorConfig.HIGH_AMOUNT,
-            id="neutral_factors_high_amount",
+            id="middle_proba_middle_score_middle_annuity_to_income_middle_employment_middle_age_middle_rate_get_high_amount",
+        ),
+        pytest.param(
+            0.05,
+            0.4,
+            0.5,
+            -200,
+            -8000,
+            15,
+            94_100,
+            id="low_proba_low_score_high_annuity_to_income_low_employment_young_age_middle_rate_get_decreased_amount",
+        ),
+        pytest.param(
+            0.25,
+            0.9,
+            0.05,
+            -4000,
+            -20000,
+            12,
+            113_400,
+            id="high_proba_high_score_low_annuity_to_income_high_employment_old_age_low_rate_get_increased_amount",
         ),
     ],
 )
@@ -123,13 +169,13 @@ def test_calc_amount_integration(
     expected: int,
 ):
     """Тест calc_amount."""
-    #  с помощью Mock-обекта Features
-    features = Mock(spec=Features)
-    features.weighted_ext_score = weighted_score
-    features.annuity_to_income_proportion = annuity_proportion
-    features.days_employed = days_employed
-    features.days_birth = days_birth
-    features.interest_rate = interest_rate
+    features = Features(
+        weighted_ext_score=weighted_score,
+        annuity_to_income_proportion=annuity_proportion,
+        days_employed=days_employed,
+        days_birth=days_birth,
+        interest_rate=interest_rate,
+    )
 
     result = calc.calc_amount(proba, features)
 

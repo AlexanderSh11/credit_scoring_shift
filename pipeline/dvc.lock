@@ -1,0 +1,50 @@
+schema: '2.0'
+stages:
+  generate_application_features:
+    cmd: python ../src/app/modelling/features/application_features.py
+    deps:
+    - path: ../src/app/modelling/features/application_features.py
+      hash: md5
+      md5: 4e42332bf76a83bd238a556747a7e303
+      size: 10444
+    - path: ../src/app/utils/db_manager.py
+      hash: md5
+      md5: 676002e2dbaa7c9e85fe0dafedbd5e29
+      size: 2910
+    outs:
+    - path: ../src/app/modelling/features/data/application_features.csv
+      hash: md5
+      md5: 65b006c460d5a17cfc9dcb33a08b1d0c
+      size: 38522567
+  generate_bureau_features:
+    cmd: python ../src/app/modelling/features/bureau_features.py
+    deps:
+    - path: ../src/app/modelling/features/bureau_features.py
+      hash: md5
+      md5: 23069100972f860f87e43de0b7a57045
+      size: 4289
+    - path: ../src/app/utils/db_manager.py
+      hash: md5
+      md5: 676002e2dbaa7c9e85fe0dafedbd5e29
+      size: 2910
+    outs:
+    - path: ../src/app/modelling/features/data/bureau_features.csv
+      hash: md5
+      md5: 30bdeb850608229f53d790b6a44872e2
+      size: 31493160
+  generate_bureau_balance_features:
+    cmd: python ../src/app/modelling/features/bureau_balance_features.py
+    deps:
+    - path: ../src/app/modelling/features/bureau_balance_features.py
+      hash: md5
+      md5: 23670c98f12a280af287a4cfb0204b83
+      size: 7237
+    - path: ../src/app/utils/db_manager.py
+      hash: md5
+      md5: 676002e2dbaa7c9e85fe0dafedbd5e29
+      size: 2910
+    outs:
+    - path: ../src/app/modelling/features/data/bureau_balance_features.csv
+      hash: md5
+      md5: 5e18e638fb4b3e6fae0e60a28f8ac0a7
+      size: 11522470

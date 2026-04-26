@@ -4,7 +4,7 @@ __pycache__/
 
 .vscode/
 
-src/app/modelling/features/*.csv
+src/app/modelling/features/data/*.csv
 
 hw6/data/*.csv
 !hw6/data/val_features.csv

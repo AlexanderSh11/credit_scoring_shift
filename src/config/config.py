@@ -15,3 +15,10 @@ DB_ARGS = {
     "user": DB_USER,
     "password": DB_PASSWORD,
 }
+
+class CalculatorConfig:
+    MAX_AMOUNT = 300_000
+    HIGH_AMOUNT = 200_000
+    MEDIUM_AMOUNT = 50_000
+    MIN_AMOUNT = 20_000
+    DAYS_IN_YEAR = 365.2425

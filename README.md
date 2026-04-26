@@ -19,7 +19,7 @@ git clone https://shift.gitlab.yandexcloud.net/shift/sharinsky/credit_scoring
 
 ### Создание виртуального окружения
 
-conda create -n credit_scoring python=3.9 -y  
+conda create -n credit_scoring python=3.11 -y  
 conda activate credit_scoring  
 
 ### Установка зависимостей

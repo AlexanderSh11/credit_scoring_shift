@@ -6,13 +6,21 @@ authors = [
     {name = "Александр",email = "shsashao811@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11,<4.0"
 dependencies = [
     "jupyter (>=1.1.1,<2.0.0)",
     "psycopg2 (>=2.9.11,<3.0.0)",
     "pandas (<3.0.0)",
     "tqdm (>=4.67.3,<5.0.0)",
-    "catboost (>=1.2.10,<2.0.0)"
+    "catboost (>=1.2.10,<2.0.0)",
+    "dvc (>=3.67.1,<4.0.0)",
+    "scikit-learn (>=1.8.0,<2.0.0)",
+    "matplotlib (>=3.10.8,<4.0.0)",
+    "scipy (>=1.17.1,<2.0.0)",
+    "plotly (>=6.7.0,<7.0.0)",
+    "pytest (>=9.0.3,<10.0.0)",
+    "wemake-python-styleguide (>=1.6.1,<2.0.0)",
+    "isort (>=8.0.1,<9.0.0)"
 ]
 
 
